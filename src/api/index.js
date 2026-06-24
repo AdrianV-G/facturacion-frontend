@@ -23,7 +23,8 @@ export const getResumen = (params)  => api.get('/api/facturas/resumen/totales', 
 export const getResumenFiscal = (params) => api.get('/api/facturas/resumen/fiscal', { params });
 
 // ── Clientes (MongoDB) ──────────────────────────────────────
-export const getClientes = (params) => api.get('/api/clientes', { params });
+export const getClientes  = (params) => api.get('/api/clientes',  { params });
+export const getProyectos = (params) => api.get('/api/proyectos', { params });
 
 // ── Empleados (MongoDB) ─────────────────────────────────────
 export const getEmpleados = (params) => api.get('/api/empleados', { params });

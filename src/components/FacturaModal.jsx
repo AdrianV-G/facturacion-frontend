@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Modal, Toggle, FileUpload } from './ui';
-import { getClientes, getEmpleados, getConfigFiscal, createFactura, updateFactura } from '../api';
+import { getProyectos, getEmpleados, getConfigFiscal, createFactura, updateFactura } from '../api';
 import { SUBTIPOS_POR_TIPO, fmtMoney, fmtPct } from '../utils/format';
 
 export default function FacturaModal({ factura, onClose, onSaved }) {
@@ -15,10 +15,10 @@ export default function FacturaModal({ factura, onClose, onSaved }) {
       monto:           factura.monto,
       estatus:         factura.estatus,
       notas:           factura.notas || '',
-      cliente_id:      factura.cliente_id || '',
+      proyecto_id:     factura.proyecto_id || '',
       empleado_id:     factura.empleado_id || '',
-      tasa_iva:        factura.tasa_iva ? (factura.tasa_iva * 100).toFixed(2) : '',
-      tasa_isr:        factura.tasa_isr ? (factura.tasa_isr * 100).toFixed(4) : '',
+      tasa_iva:        factura.tasa_iva ? (factura.tasa_iva * 100).toFixed(2) : '16.00',
+      tasa_isr:        factura.tasa_isr ? (factura.tasa_isr * 100).toFixed(4) : '1.2500',
     } : {
       fecha_operacion: new Date().toISOString().split('T')[0],
       tipo_operacion: 'deposito',
@@ -26,30 +26,28 @@ export default function FacturaModal({ factura, onClose, onSaved }) {
       monto: '',
       estatus: 'pendiente',
       notas: '',
-      cliente_id: '',
+      proyecto_id: '',
       empleado_id: '',
       tasa_iva: '16.00',
       tasa_isr: '1.2500',
     }
   });
 
-  const tipo     = watch('tipo_operacion');
-  const subtipo  = watch('subtipo');
-  const monto    = parseFloat(watch('monto')) || 0;
-  const tasaIva  = parseFloat(watch('tasa_iva')) / 100 || 0;
-  const tasaIsr  = parseFloat(watch('tasa_isr')) / 100 || 0;
+  const tipo    = watch('tipo_operacion');
+  const subtipo = watch('subtipo');
+  const monto   = parseFloat(watch('monto')) || 0;
+  const tasaIva = parseFloat(watch('tasa_iva')) / 100 || 0;
+  const tasaIsr = parseFloat(watch('tasa_isr')) / 100 || 0;
 
   const [requiereFactura, setRequiereFactura] = useState(isEdit ? factura.requiere_factura : false);
-  const [archivo, setArchivo] = useState(null);
-  const [clientes, setClientes]   = useState([]);
+  const [archivo, setArchivo]   = useState(null);
+  const [proyectos, setProyectos] = useState([]);
   const [empleados, setEmpleados] = useState([]);
 
-  // Reset subtipo when tipo changes
   useEffect(() => { setValue('subtipo', ''); }, [tipo]);
 
-  // Load clientes, empleados, config fiscal
   useEffect(() => {
-    getClientes({ limit: 200 }).then(r => setClientes(r.data.data)).catch(() => {});
+    getProyectos({ limit: 200 }).then(r => setProyectos(r.data.data)).catch(() => {});
     getEmpleados({ limit: 200 }).then(r => setEmpleados(r.data.data)).catch(() => {});
     if (!isEdit) {
       getConfigFiscal().then(r => {
@@ -60,9 +58,9 @@ export default function FacturaModal({ factura, onClose, onSaved }) {
   }, []);
 
   // Cálculos fiscales preview
-  const montoBase   = requiereFactura && tasaIva ? monto / (1 + tasaIva) : monto;
-  const ivaCalc     = requiereFactura && tasaIva ? monto - montoBase : 0;
-  const isrRetenido = requiereFactura && tasaIsr ? montoBase * tasaIsr : 0;
+  const montoBase    = requiereFactura && tasaIva ? monto / (1 + tasaIva) : monto;
+  const ivaCalc      = requiereFactura && tasaIva ? monto - montoBase : 0;
+  const isrRetenido  = requiereFactura && tasaIsr ? montoBase * tasaIsr : 0;
   const netoRecibido = monto - isrRetenido;
 
   const onSubmit = async (data) => {
@@ -89,7 +87,7 @@ export default function FacturaModal({ factura, onClose, onSaved }) {
     }
   };
 
-  const subtipos = SUBTIPOS_POR_TIPO[tipo] || [];
+  const subtipos   = SUBTIPOS_POR_TIPO[tipo] || [];
   const esDeposito = tipo === 'deposito';
   const esNomina   = subtipo === 'nomina';
 
@@ -106,7 +104,7 @@ export default function FacturaModal({ factura, onClose, onSaved }) {
         </>
       }
     >
-      {/* Tipo de operación */}
+      {/* Tipo y subtipo */}
       <div className="form-grid">
         <div className="form-group">
           <label className="form-label">Tipo de operación</label>
@@ -125,15 +123,20 @@ export default function FacturaModal({ factura, onClose, onSaved }) {
         </div>
       </div>
 
-      {/* Cliente (solo depósitos) */}
+      {/* Proyecto (solo depósitos) */}
       {esDeposito && (
         <div className="form-group">
-          <label className="form-label">Cliente</label>
-          <select className="form-select" {...register('cliente_id', { required: 'Requerido para depósitos' })}>
-            <option value="">Selecciona cliente…</option>
-            {clientes.map(c => <option key={c._id} value={c._id}>{c.nombre}{c.empresa ? ` — ${c.empresa}` : ''}</option>)}
+          <label className="form-label">Proyecto</label>
+          <select className="form-select" {...register('proyecto_id', { required: 'Requerido para depósitos' })}>
+            <option value="">Selecciona proyecto…</option>
+            {proyectos.map(p => (
+              <option key={p._id} value={p._id}>
+                {p.nombre_proyecto} — {p.nombre_cliente}
+                {p.monto_pago ? ` ($${p.monto_pago.toLocaleString('es-MX')})` : ''}
+              </option>
+            ))}
           </select>
-          {errors.cliente_id && <span className="form-error">{errors.cliente_id.message}</span>}
+          {errors.proyecto_id && <span className="form-error">{errors.proyecto_id.message}</span>}
         </div>
       )}
 
@@ -143,28 +146,32 @@ export default function FacturaModal({ factura, onClose, onSaved }) {
           <label className="form-label">Empleado</label>
           <select className="form-select" {...register('empleado_id', { required: 'Requerido para nómina' })}>
             <option value="">Selecciona empleado…</option>
-            {empleados.map(e => <option key={e._id} value={e._id}>{e.nombre_completo || e.nombre}</option>)}
+            {empleados.map(e => (
+              <option key={e._id} value={e._id}>{e.nombre_completo || e.nombre}</option>
+            ))}
           </select>
           {errors.empleado_id && <span className="form-error">{errors.empleado_id.message}</span>}
         </div>
       )}
 
-      {/* Fechas y monto */}
+      {/* Fecha y monto */}
       <div className="form-grid">
         <div className="form-group">
           <label className="form-label">Fecha de operación</label>
-          <input type="date" className="form-input" {...register('fecha_operacion', { required: 'Requerido' })} />
+          <input type="date" className="form-input"
+            {...register('fecha_operacion', { required: 'Requerido' })} />
           {errors.fecha_operacion && <span className="form-error">{errors.fecha_operacion.message}</span>}
         </div>
         <div className="form-group">
           <label className="form-label">Monto (MXN)</label>
           <input type="number" step="0.01" min="0.01" className="form-input"
-            placeholder="0.00" {...register('monto', { required: 'Requerido', min: { value: 0.01, message: 'Mayor a 0' } })} />
+            placeholder="0.00"
+            {...register('monto', { required: 'Requerido', min: { value: 0.01, message: 'Mayor a 0' } })} />
           {errors.monto && <span className="form-error">{errors.monto.message}</span>}
         </div>
       </div>
 
-      {/* Botón Se factura — solo depósitos */}
+      {/* Se factura — solo depósitos */}
       {esDeposito && (
         <Toggle
           checked={requiereFactura}
@@ -242,7 +249,8 @@ export default function FacturaModal({ factura, onClose, onSaved }) {
       {/* Notas */}
       <div className="form-group">
         <label className="form-label">Notas</label>
-        <textarea className="form-textarea" placeholder="Observaciones opcionales…" {...register('notas')} />
+        <textarea className="form-textarea"
+          placeholder="Observaciones opcionales…" {...register('notas')} />
       </div>
     </Modal>
   );
