@@ -13,24 +13,17 @@ api.interceptors.response.use(
   }
 );
 
-// ── Facturas ────────────────────────────────────────────────
-export const getFacturas = (params) => api.get('/api/facturas', { params });
-export const getFactura  = (id)     => api.get(`/api/facturas/${id}`);
-export const createFactura = (form) => api.post('/api/facturas', form); // FormData
-export const updateFactura = (id, form) => api.put(`/api/facturas/${id}`, form);
-export const cancelarFactura = (id) => api.patch(`/api/facturas/${id}/cancelar`);
-export const getResumen = (params)  => api.get('/api/facturas/resumen/totales', { params });
-export const getResumenFiscal = (params) => api.get('/api/facturas/resumen/fiscal', { params });
-
-// ── Clientes (MongoDB) ──────────────────────────────────────
-export const getClientes  = (params) => api.get('/api/clientes',  { params });
-export const getProyectos = (params) => api.get('/api/proyectos', { params });
-
-// ── Empleados (MongoDB) ─────────────────────────────────────
-export const getEmpleados = (params) => api.get('/api/empleados', { params });
-
-// ── Config fiscal ───────────────────────────────────────────
-export const getConfigFiscal = ()      => api.get('/api/config-fiscal');
-export const updateConfigFiscal = (d)  => api.put('/api/config-fiscal', d);
+export const getFacturas      = (params)    => api.get('/api/facturas', { params });
+export const getFactura       = (id)        => api.get(`/api/facturas/${id}`);
+export const createFactura    = (form)      => api.post('/api/facturas', form);
+export const updateFactura    = (id, form)  => api.put(`/api/facturas/${id}`, form);
+export const cancelarFactura  = (id)        => api.patch(`/api/facturas/${id}/cancelar`);
+export const getResumen       = (params)    => api.get('/api/facturas/resumen/totales', { params });
+export const getResumenFiscal = (params)    => api.get('/api/facturas/resumen/fiscal', { params });
+export const getClientes      = (params)    => api.get('/api/clientes',  { params });
+export const getProyectos     = (params)    => api.get('/api/proyectos', { params });
+export const getEmpleados     = (params)    => api.get('/api/empleados', { params });
+export const getConfigFiscal  = ()          => api.get('/api/config-fiscal');
+export const updateConfigFiscal = (d)       => api.put('/api/config-fiscal', d);
 
 export default api;
