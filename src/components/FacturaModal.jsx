@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { Modal, Toggle, FileUpload } from './ui';
-import { getProyectos, getEmpleados, getConfigFiscal, createFactura, updateFactura } from '../api';
+import { getEmpleados, getConfigFiscal, createFactura, updateFactura } from '../api';
+import api from '../api';
 import { SUBTIPOS_POR_TIPO, fmtMoney, fmtPct } from '../utils/format';
 
 export default function FacturaModal({ factura, onClose, onSaved }) {
@@ -41,14 +42,21 @@ export default function FacturaModal({ factura, onClose, onSaved }) {
 
   const [requiereFactura, setRequiereFactura] = useState(isEdit ? factura.requiere_factura : false);
   const [archivo, setArchivo]   = useState(null);
-  const [proyectos, setProyectos] = useState([]);
+  const [grupos, setGrupos]     = useState([]); // proyectos agrupados por cliente
   const [empleados, setEmpleados] = useState([]);
 
   useEffect(() => { setValue('subtipo', ''); }, [tipo]);
 
   useEffect(() => {
-    getProyectos({ limit: 200 }).then(r => setProyectos(r.data.data)).catch(() => {});
-    getEmpleados({ limit: 200 }).then(r => setEmpleados(r.data.data)).catch(() => {});
+    // Cargar proyectos agrupados por cliente
+    api.get('/api/proyectos/agrupados')
+      .then(r => setGrupos(r.data.data))
+      .catch(() => {});
+
+    getEmpleados({ limit: 200 })
+      .then(r => setEmpleados(r.data.data))
+      .catch(() => {});
+
     if (!isEdit) {
       getConfigFiscal().then(r => {
         setValue('tasa_iva', (r.data.data.tasa_iva * 100).toFixed(2));
@@ -123,17 +131,23 @@ export default function FacturaModal({ factura, onClose, onSaved }) {
         </div>
       </div>
 
-      {/* Proyecto (solo depósitos) */}
+      {/* Selector de proyecto agrupado por cliente */}
       {esDeposito && (
         <div className="form-group">
-          <label className="form-label">Proyecto</label>
-          <select className="form-select" {...register('proyecto_id', { required: 'Requerido para depósitos' })}>
-            <option value="">Selecciona proyecto…</option>
-            {proyectos.map(p => (
-              <option key={p._id} value={p._id}>
-                {p.nombre_proyecto} — {p.nombre_cliente}
-                {p.monto_pago ? ` ($${p.monto_pago.toLocaleString('es-MX')})` : ''}
-              </option>
+          <label className="form-label">Cliente → Proyecto</label>
+          <select className="form-select"
+            {...register('proyecto_id', { required: 'Requerido para depósitos' })}>
+            <option value="">Selecciona…</option>
+            {grupos.map(g => (
+              <optgroup key={g.cliente} label={`👤 ${g.cliente}`}>
+                {g.proyectos.map(p => (
+                  <option key={p._id} value={p._id}>
+                    {p.nombre_proyecto}
+                    {p.monto_pago ? ` — ${fmtMoney(p.monto_pago)}` : ''}
+                    {p.tipo_pago ? ` (${p.tipo_pago})` : ''}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
           {errors.proyecto_id && <span className="form-error">{errors.proyecto_id.message}</span>}
@@ -144,7 +158,8 @@ export default function FacturaModal({ factura, onClose, onSaved }) {
       {esNomina && (
         <div className="form-group">
           <label className="form-label">Empleado</label>
-          <select className="form-select" {...register('empleado_id', { required: 'Requerido para nómina' })}>
+          <select className="form-select"
+            {...register('empleado_id', { required: 'Requerido para nómina' })}>
             <option value="">Selecciona empleado…</option>
             {empleados.map(e => (
               <option key={e._id} value={e._id}>{e.nombre_completo || e.nombre}</option>
@@ -171,7 +186,7 @@ export default function FacturaModal({ factura, onClose, onSaved }) {
         </div>
       </div>
 
-      {/* Se factura — solo depósitos */}
+      {/* Toggle Se factura */}
       {esDeposito && (
         <Toggle
           checked={requiereFactura}
