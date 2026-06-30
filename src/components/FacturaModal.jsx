@@ -74,7 +74,12 @@ export default function FacturaModal({ factura, onClose, onSaved }) {
   const onSubmit = async (data) => {
     try {
       const form = new FormData();
-      Object.entries(data).forEach(([k, v]) => { if (v !== '') form.append(k, v); });
+      Object.entries(data).forEach(([k, v]) => {
+        if (v === '') return;
+        // tasa_iva / tasa_isr solo se envían si requiere_factura está activo
+        if ((k === 'tasa_iva' || k === 'tasa_isr') && !requiereFactura) return;
+        form.append(k, v);
+      });
       form.set('requiere_factura', requiereFactura);
       if (requiereFactura) {
         form.set('tasa_iva', (parseFloat(data.tasa_iva) / 100).toString());
